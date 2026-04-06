@@ -9,7 +9,7 @@ import { ChatSession, ChatMessage } from '../types/chat.types';
 class SessionService {
   private sessions: Map<string, ChatSession> = new Map();
   private readonly SESSION_TIMEOUT = 10 * 60 * 1000; // 10 minutos (RN-04, RF09)
-  private readonly MAX_MESSAGES = 8; // RN-05
+  private readonly MAX_MESSAGES = 20; // RN-05
 
   constructor() {
     // Limpar sessões expiradas a cada 2 minutos
