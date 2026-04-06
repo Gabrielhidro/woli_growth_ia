@@ -1,0 +1,235 @@
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+
+const prisma = new PrismaClient();
+
+const fakeLeads = [
+  {
+    nome: 'Carla Mendonça',
+    email: 'carla.mendonca@grupovision.com.br',
+    whatsapp: '11 98765-4321',
+    empresa: 'Grupo Vision',
+    setor: 'Varejo',
+    tamanho_equipe: '200+ colaboradores',
+    desafio_principal: 'Engajamento muito baixo nos treinamentos. A equipe não assiste os vídeos.',
+    usa_plataforma: 'Usamos planilhas e e-mail, nada estruturado.',
+    score: 88,
+    classificacao: 'QUALIFICADO',
+    status: 'FINALIZADO',
+    status_comercial: 'NOVO',
+    resumo_conversa: 'Carla é coordenadora de T&D no Grupo Vision, rede de varejo com +200 colaboradores. Principal dor: baixíssimo engajamento nos treinamentos atuais (feitos por e-mail e planilhas). Busca uma solução gamificada. Urgência: nos próximos 2 meses.',
+    pitch: 'A Woli é a solução ideal para o Grupo Vision. Com nossa plataforma gamificada, vocês vão transformar treinamentos chatos em experiências que os colaboradores querem completar — com rankings, pontos e missões que criam engajamento real.\n\nCom +200 colaboradores no varejo, a Woli oferece trilhas customizadas por função (caixa, vendedor, gerente), tracking em tempo real de quem completou e quem precisa de reforço, e dashboards que mostram o impacto direto nos resultados da loja.',
+    historico_chat: JSON.stringify([
+      { role: 'assistant', content: 'Oi! 👋 Sou o Wolerzito. Qual o principal desafio com capacitação?', timestamp: new Date() },
+      { role: 'user', content: 'Engajamento muito baixo. A galera não assiste os treinamentos.', timestamp: new Date() },
+      { role: 'assistant', content: 'Entendo! Vocês usam alguma plataforma hoje?', timestamp: new Date() },
+      { role: 'user', content: 'Só planilhas e e-mail. É uma bagunça.', timestamp: new Date() },
+    ]),
+    historico_status: JSON.stringify([{ status: 'NOVO', timestamp: new Date().toISOString() }]),
+  },
+  {
+    nome: 'Rafael Teixeira',
+    email: 'rafael.t@innovatecorp.com',
+    whatsapp: '21 97654-3210',
+    empresa: 'InnovateCorp',
+    setor: 'Tecnologia',
+    tamanho_equipe: '51-200 colaboradores',
+    desafio_principal: 'Precisamos treinar time de vendas de forma escalável sem depender de treinador presencial.',
+    usa_plataforma: 'Usamos Moodle mas é muito travado.',
+    score: 75,
+    classificacao: 'QUALIFICADO',
+    status: 'FINALIZADO',
+    status_comercial: 'CONTATADO',
+    resumo_conversa: 'Rafael é Head de Vendas na InnovateCorp (tech, ~80 pessoas). Usa Moodle mas está insatisfeito com a experiência. Precisa escalar treinamento de vendas sem depender de presencial. Urgência: Q2 deste ano.',
+    pitch: 'Para a InnovateCorp, a Woli entrega o que o Moodle nunca conseguiu: uma experiência moderna que o time de vendas realmente quer usar. Com microlearning em vídeo, gamificação e IA, cada vendedor recebe treinamentos personalizados conforme seu perfil e performance.\n\nA integração com suas ferramentas de CRM e comunicação é nativa. Em 30 dias vocês já teriam o time treinado e com dashboards mostrando exatamente quem está pronto para vender.',
+    historico_chat: JSON.stringify([
+      { role: 'assistant', content: 'Oi! Sou o Wolerzito. Qual seu principal desafio com treinamentos?', timestamp: new Date() },
+      { role: 'user', content: 'Treinar vendas sem precisar de treinador presencial.', timestamp: new Date() },
+    ]),
+    historico_status: JSON.stringify([
+      { status: 'NOVO', timestamp: new Date(Date.now() - 86400000 * 2).toISOString() },
+      { status: 'CONTATADO', timestamp: new Date(Date.now() - 86400000).toISOString() },
+    ]),
+  },
+  {
+    nome: 'Patricia Sousa',
+    email: 'patricia@redecuidar.com.br',
+    whatsapp: '31 96543-2109',
+    empresa: 'Rede Cuidar',
+    setor: 'Saúde',
+    tamanho_equipe: '200+ colaboradores',
+    desafio_principal: 'Compliance e treinamentos obrigatórios para equipe médica e administrativa.',
+    usa_plataforma: 'Não temos plataforma. Treinamentos são feitos em PDF e presencialmente.',
+    score: 82,
+    classificacao: 'QUALIFICADO',
+    status: 'FINALIZADO',
+    status_comercial: 'EM_NEGOCIACAO',
+    resumo_conversa: 'Patricia é diretora de RH da Rede Cuidar, rede de clínicas com +300 colaboradores. Necessidade urgente de digitalizar treinamentos de compliance e obrigatórios (NR, LGPD, protocolos clínicos). Não tem plataforma atualmente.',
+    pitch: 'A Rede Cuidar vai encontrar na Woli um parceiro que entende o rigor da saúde. Nossa plataforma permite criar trilhas obrigatórias com controle de conclusão, emissão de certificados automática e relatórios de compliance que a ANVISA e auditores adoram ver.\n\nPara o time clínico e administrativo, a Woli oferece formatos variados — vídeo curto, avaliação, simulação — tudo rastreável por função, unidade e período. Vocês nunca mais perdem a noção de quem foi treinado e quem não foi.',
+    historico_chat: JSON.stringify([]),
+    historico_status: JSON.stringify([
+      { status: 'NOVO', timestamp: new Date(Date.now() - 86400000 * 5).toISOString() },
+      { status: 'CONTATADO', timestamp: new Date(Date.now() - 86400000 * 3).toISOString() },
+      { status: 'EM_NEGOCIACAO', timestamp: new Date(Date.now() - 86400000).toISOString() },
+    ]),
+  },
+  {
+    nome: 'Marcos Oliveira',
+    email: 'marcos.oliveira@construtora-abc.com',
+    empresa: 'Construtora ABC',
+    setor: 'Construção Civil',
+    tamanho_equipe: '51-200 colaboradores',
+    desafio_principal: 'Treinamento de segurança do trabalho para equipes em campo.',
+    usa_plataforma: 'Nada digital. Tudo presencial.',
+    score: 68,
+    classificacao: 'QUALIFICADO',
+    status: 'FINALIZADO',
+    status_comercial: 'FECHADO',
+    resumo_conversa: 'Marcos é gerente de operações na Construtora ABC. Foco em NRs e segurança para equipes de campo. Dificuldade de reunir todos presencialmente.',
+    pitch: 'A Woli resolve o desafio da Construtora ABC com conteúdo mobile-first que o trabalhador acessa pelo celular, sem precisar parar a obra para reunião. Treinamentos de NR-35, NR-18 e outros em vídeo curto com quiz e certificado automático.\n\nAlém de garantir conformidade, vocês terão rastreabilidade completa: quem fez, quando fez, e nota obtida — tudo disponível para fiscalizações.',
+    historico_chat: JSON.stringify([]),
+    historico_status: JSON.stringify([
+      { status: 'NOVO', timestamp: new Date(Date.now() - 86400000 * 10).toISOString() },
+      { status: 'CONTATADO', timestamp: new Date(Date.now() - 86400000 * 8).toISOString() },
+      { status: 'EM_NEGOCIACAO', timestamp: new Date(Date.now() - 86400000 * 5).toISOString() },
+      { status: 'FECHADO', timestamp: new Date(Date.now() - 86400000 * 2).toISOString() },
+    ]),
+  },
+  {
+    nome: 'Juliana Castro',
+    email: 'ju.castro@bancoreal.com.br',
+    whatsapp: '11 95432-1098',
+    empresa: 'Banco Real',
+    setor: 'Financeiro',
+    tamanho_equipe: '200+ colaboradores',
+    desafio_principal: 'Onboarding de novos colaboradores e treinamento de produtos financeiros.',
+    usa_plataforma: 'Temos Cornerstone mas caro e pouco utilizado.',
+    score: 90,
+    classificacao: 'QUALIFICADO',
+    status: 'FINALIZADO',
+    status_comercial: 'NOVO',
+    resumo_conversa: 'Juliana é CHRO do Banco Real. Usa Cornerstone mas a adoção é baixíssima e o custo é muito alto. Busca migrar para plataforma mais moderna e engajante. Decisão prevista para o próximo trimestre.',
+    pitch: 'Para o Banco Real, a Woli oferece a migração do Cornerstone sem traumas: importamos seus conteúdos existentes e entregamos uma experiência que sua equipe realmente vai usar — com IA que recomenda o próximo treinamento baseado no cargo e performance de cada colaborador.\n\nO ROI é imediato: menos custo com licença, mais engajamento mensurável, e onboarding de novos colaboradores que dura dias, não semanas.',
+    historico_chat: JSON.stringify([]),
+    historico_status: JSON.stringify([{ status: 'NOVO', timestamp: new Date().toISOString() }]),
+  },
+  {
+    nome: 'Diego Almeida',
+    email: 'diego@startuplean.io',
+    empresa: 'StartupLean',
+    setor: 'Tecnologia',
+    tamanho_equipe: '1-10 colaboradores',
+    desafio_principal: 'Treinar os 5 funcionários novos.',
+    usa_plataforma: 'Nada.',
+    score: 22,
+    classificacao: 'DESCARTADO',
+    status: 'FINALIZADO',
+    status_comercial: 'PERDIDO',
+    resumo_conversa: 'Diego é fundador de startup com apenas 5 funcionários. Sem orçamento para plataforma agora. Fora do perfil ideal da Woli.',
+    pitch: '',
+    historico_chat: JSON.stringify([]),
+    historico_status: JSON.stringify([
+      { status: 'NOVO', timestamp: new Date(Date.now() - 86400000 * 3).toISOString() },
+      { status: 'PERDIDO', timestamp: new Date(Date.now() - 86400000 * 2).toISOString() },
+    ]),
+  },
+  {
+    nome: 'Ana Beatriz Lima',
+    email: 'ana.lima@supermercadosbom.com',
+    whatsapp: '41 94321-0987',
+    empresa: 'Supermercados Bom',
+    setor: 'Varejo',
+    tamanho_equipe: '200+ colaboradores',
+    desafio_principal: 'Alta rotatividade e necessidade de treinar rápido cada novo funcionário.',
+    usa_plataforma: 'Google Classroom mas sem engajamento.',
+    score: 79,
+    classificacao: 'QUALIFICADO',
+    status: 'FINALIZADO',
+    status_comercial: 'NOVO',
+    resumo_conversa: 'Ana é gerente de RH em rede de supermercados regional com ~350 colaboradores. Alta rotatividade exige onboarding rápido e repetível. Usa Google Classroom com resultado insatisfatório.',
+    pitch: 'Supermercados Bom vai transformar o onboarding de repositores, caixas e açougueiros com a Woli. Trilhas por função, certificação rápida, tudo no celular — sem precisar de computador ou sala de aula.\n\nCom gamificação, seus colaboradores competem entre si nas lojas, gerando engajamento espontâneo. E a cada nova contratação, o onboarding acontece automaticamente — sem depender de nenhum treinador.',
+    historico_chat: JSON.stringify([]),
+    historico_status: JSON.stringify([{ status: 'NOVO', timestamp: new Date().toISOString() }]),
+  },
+  {
+    nome: 'Fernando Rocha',
+    email: 'f.rocha@logisticaexpress.com',
+    whatsapp: '51 93210-9876',
+    empresa: 'Logística Express',
+    setor: 'Logística',
+    tamanho_equipe: '51-200 colaboradores',
+    desafio_principal: 'Treinar motoristas e operadores de armazém dispersos pelo Brasil.',
+    usa_plataforma: 'Nenhuma. Temos PPTs salvos em pasta compartilhada.',
+    score: 71,
+    classificacao: 'QUALIFICADO',
+    status: 'FINALIZADO',
+    status_comercial: 'CONTATADO',
+    resumo_conversa: 'Fernando é diretor de operações na Logística Express. Equipe dispersa em 8 estados, sem plataforma de T&D. Urgência moderada — quer implementar no próximo semestre.',
+    pitch: 'A Logística Express vai finalmente conectar todos os seus colaboradores — de motoristas no Nordeste a operadores no Sul — em uma única plataforma de aprendizado. A Woli funciona offline, então o motorista treina mesmo sem internet na estrada.\n\nCom relatórios por regional e por função, você sabe exatamente o nível de preparo de cada equipe antes de uma nova operação. Tudo integrado ao celular que eles já têm no bolso.',
+    historico_chat: JSON.stringify([]),
+    historico_status: JSON.stringify([
+      { status: 'NOVO', timestamp: new Date(Date.now() - 86400000 * 4).toISOString() },
+      { status: 'CONTATADO', timestamp: new Date(Date.now() - 86400000 * 2).toISOString() },
+    ]),
+  },
+  {
+    nome: 'Camila Duarte',
+    email: 'camila.duarte@educacaoforma.com.br',
+    empresa: 'Educação Forma',
+    setor: 'Educação',
+    tamanho_equipe: '11-50 colaboradores',
+    desafio_principal: 'Capacitar professores em novas metodologias e uso de tecnologia.',
+    usa_plataforma: 'Moodle próprio.',
+    score: 45,
+    classificacao: 'INCOMPLETO',
+    status: 'FINALIZADO',
+    status_comercial: 'NOVO',
+    resumo_conversa: 'Camila representa uma escola privada de médio porte. Já tem Moodle próprio. Interesse em gamificação mas não forneceu contato completo.',
+    pitch: '',
+    historico_chat: JSON.stringify([]),
+    historico_status: JSON.stringify([{ status: 'NOVO', timestamp: new Date().toISOString() }]),
+  },
+  {
+    nome: 'Thiago Barbosa',
+    email: 'thiago@farmaceuticaplus.com',
+    whatsapp: '19 92109-8765',
+    empresa: 'Farmacêutica Plus',
+    setor: 'Farmacêutico',
+    tamanho_equipe: '200+ colaboradores',
+    desafio_principal: 'Treinamento regulatório (ANVISA, GMP) para equipe industrial e comercial.',
+    usa_plataforma: 'SAP SuccessFactors — extremamente complexo e caro.',
+    score: 85,
+    classificacao: 'QUALIFICADO',
+    status: 'FINALIZADO',
+    status_comercial: 'NOVO',
+    resumo_conversa: 'Thiago é gerente de treinamento na Farmacêutica Plus. Usa SAP SuccessFactors mas é complexo demais para o usuário final. Necessidade crítica de treinamentos regulatórios GMP/ANVISA. Decisão nos próximos 60 dias.',
+    pitch: 'A Farmacêutica Plus vai migrar do SAP SuccessFactors para uma plataforma que sua equipe industrial realmente usa. A Woli oferece trilhas de GMP, ANVISA e BPF com controle rigoroso de versão, certificações automáticas e auditoria completa de acessos — tudo que regulatório exige.\n\nA simplicidade da interface significa adoção imediata, sem meses de treinamento para usar a ferramenta de treinamento. E o custo é uma fração do SuccessFactors, com muito mais engajamento.',
+    historico_chat: JSON.stringify([]),
+    historico_status: JSON.stringify([{ status: 'NOVO', timestamp: new Date().toISOString() }]),
+  },
+];
+
+async function main() {
+  console.log('🌱 Iniciando seed...');
+
+  // Admin user
+  const hash = await bcrypt.hash('123456', 10);
+  await prisma.user.upsert({
+    where: { email: 'admin@woli.com.br' },
+    update: { senha_hash: hash },
+    create: { email: 'admin@woli.com.br', senha_hash: hash, nome: 'Admin Woli' },
+  });
+  console.log('✅ Usuário admin criado: admin@woli.com.br / 123456');
+
+  // Fake leads
+  for (const lead of fakeLeads) {
+    await prisma.lead.create({ data: lead });
+  }
+  console.log(`✅ ${fakeLeads.length} leads fake criados`);
+
+  console.log('🚀 Seed concluído!');
+}
+
+main()
+  .catch(console.error)
+  .finally(() => prisma.$disconnect());

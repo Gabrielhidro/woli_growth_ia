@@ -1,35 +1,49 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id         String   @id @default(uuid())
+  email      String   @unique
+  senha_hash String
+  nome       String   @default("Admin")
+  criado_em  DateTime @default(now())
+}
+
 model Lead {
-  id                String   @id @default(uuid())
-  nome              String?
-  email             String?
-  whatsapp          String?
-  empresa           String?
-  setor             String?
-  tamanho_equipe    String?
-  desafio_principal String?
-  usa_plataforma    String?
-  score             Int      @default(0)
-  classificacao     String   @default("INCOMPLETO") // QUALIFICADO, DESCARTADO, INCOMPLETO
-  status            String   @default("EM_ANDAMENTO") // EM_ANDAMENTO, FINALIZADO
-  resumo_conversa   String?
-  pitch             String?
-  historico_chat    String // JSON stringified
-  criado_em         DateTime @default(now())
-  atualizado_em     DateTime @updatedAt
+  id                     String    @id @default(uuid())
+  // Dados coletados no chat
+  nome                   String?
+  email                  String?
+  whatsapp               String?
+  empresa                String?
+  setor                  String?
+  tamanho_equipe         String?
+  desafio_principal      String?
+  usa_plataforma         String?
+  // Qualificação
+  score                  Int       @default(0)
+  classificacao          String    @default("INCOMPLETO") // QUALIFICADO | DESCARTADO | INCOMPLETO
+  status                 String    @default("EM_ANDAMENTO") // EM_ANDAMENTO | FINALIZADO (chat)
+  resumo_conversa        String?
+  pitch                  String?
+  historico_chat         String    @default("[]") // JSON
+  // Pipeline comercial
+  status_comercial       String    @default("NOVO") // NOVO | CONTATADO | EM_NEGOCIACAO | FECHADO | PERDIDO
+  historico_status       String    @default("[]") // JSON [{status, timestamp}]
+  primeiro_visualizado_em DateTime?
+  anotacoes_internas     String?
+  // Timestamps
+  criado_em              DateTime  @default(now())
+  atualizado_em          DateTime  @updatedAt
 
   @@index([classificacao])
+  @@index([status_comercial])
   @@index([score])
   @@index([criado_em])
 }
