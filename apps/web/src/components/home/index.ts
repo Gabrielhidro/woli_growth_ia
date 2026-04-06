@@ -1,0 +1,10 @@
+export { Header } from './Header';
+export { Hero } from './Hero';
+export { Numbers } from './Numbers';
+export { ClientLogos } from './ClientLogos';
+export { ForWho } from './ForWho';
+export { HowItWorks } from './HowItWorks';
+export { Features } from './Features';
+export { FAQ } from './FAQ';
+export { CTA } from './CTA';
+export { Footer } from './Footer';
