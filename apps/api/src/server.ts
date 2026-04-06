@@ -8,18 +8,8 @@ import { leadsRoutes } from './routes/leads.routes';
 
 const app = express();
 
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-  ...(env.FRONTEND_URL ? [env.FRONTEND_URL] : []),
-];
-
 app.use(cors({
-  origin: (origin, callback) => {
-    // Permite requisições sem origin (Postman, Railway health checks)
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-    callback(new Error(`CORS bloqueado para: ${origin}`));
-  },
+  origin: true,
   credentials: true,
 }));
 app.use(express.json());
