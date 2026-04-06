@@ -29,7 +29,7 @@ interface ChatState {
   setError: (error: string | null) => void;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3333';
+const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3333').replace(/\/+$/, '');
 
 export const useChatStore = create<ChatState>((set, get) => ({
   sessionId: null,

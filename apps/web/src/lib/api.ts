@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3333';
+const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:3333').replace(/\/+$/, '');
 
 function getToken(): string | null {
   return localStorage.getItem('woli_token');
