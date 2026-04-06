@@ -29,7 +29,7 @@ app.use(chatRoutes);
 app.use(authRoutes);
 app.use(leadsRoutes);
 
-app.listen(env.PORT, () => {
+app.listen(Number(env.PORT), '0.0.0.0', () => {
   console.log(`🚀 Server running on http://localhost:${env.PORT}`);
   console.log(`📋 Health check: http://localhost:${env.PORT}/health`);
   console.log(`💬 Chat API: http://localhost:${env.PORT}/api/chat`);
