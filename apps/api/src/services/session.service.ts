@@ -10,10 +10,19 @@ class SessionService {
   private sessions: Map<string, ChatSession> = new Map();
   private readonly SESSION_TIMEOUT = 10 * 60 * 1000; // 10 minutos (RN-04, RF09)
   private readonly MAX_MESSAGES = 20; // RN-05
+  private onSessionExpired?: (session: ChatSession) => Promise<void>;
 
   constructor() {
     // Limpar sessões expiradas a cada 2 minutos
     setInterval(() => this.cleanupExpiredSessions(), 2 * 60 * 1000);
+  }
+
+  /**
+   * Registra callback para quando uma sessão expira por inatividade.
+   * Permite salvar os dados no banco antes de limpar a sessão.
+   */
+  setOnSessionExpired(callback: (session: ChatSession) => Promise<void>): void {
+    this.onSessionExpired = callback;
   }
 
   /**
@@ -139,16 +148,26 @@ class SessionService {
   }
 
   /**
-   * Limpa sessões expiradas
+   * Limpa sessões expiradas, salvando dados no banco antes de remover
    */
-  private cleanupExpiredSessions(): void {
+  private async cleanupExpiredSessions(): Promise<void> {
     const now = Date.now();
 
     for (const [sessionId, session] of this.sessions.entries()) {
       const lastActivity = session.lastActivity.getTime();
 
       if (now - lastActivity > this.SESSION_TIMEOUT) {
-        console.log(`[SessionService] Limpando sessão expirada: ${sessionId}`);
+        console.log(`[SessionService] Sessão expirada: ${sessionId}`);
+
+        // Salva dados no banco antes de limpar
+        if (this.onSessionExpired && session.isActive) {
+          try {
+            await this.onSessionExpired(session);
+          } catch (error) {
+            console.error(`[SessionService] Erro ao finalizar sessão expirada ${sessionId}:`, error);
+          }
+        }
+
         this.sessions.delete(sessionId);
       }
     }

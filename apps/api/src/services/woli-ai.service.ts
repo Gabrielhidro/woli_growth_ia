@@ -127,19 +127,26 @@ export class WoliAIService {
 
   /** Respostas simuladas — usadas quando WOLI_AI_TOKEN não está configurado */
   private simulateResponse(chatHistory: ChatMessage[]): WolerzitoResponse {
-    const step = chatHistory.filter(m => m.role === 'user').length + 1;
+    const userMessages = chatHistory.filter(m => m.role === 'user');
+    const step = userMessages.length + 1;
+
+    // Coleta respostas do usuário para montar dados_lead na finalização
+    const userResponses = userMessages.map(m => m.content);
 
     const responses: Record<number, WolerzitoResponse> = {
-      1: { message: 'Entendo! E qual o tamanho da equipe que precisa ser treinada?', currentStep: 3, shouldEnd: false },
-      2: { message: 'Legal! Vocês usam alguma plataforma de treinamentos hoje?', currentStep: 4, shouldEnd: false },
-      3: { message: 'E em quanto tempo gostariam de implementar uma solução?', currentStep: 5, shouldEnd: false },
-      4: { message: 'Perfeito! Para conectar com um especialista, qual seu nome completo?', currentStep: 6, shouldEnd: false },
-      5: { message: 'Ótimo! E qual o melhor contato — email ou WhatsApp?', currentStep: 6, shouldEnd: false },
-      6: { message: 'Anotado! E qual o nome da empresa?', currentStep: 6, shouldEnd: false },
+      1: { message: 'Entendo! Qual o setor de atuação da sua empresa?', currentStep: 2, shouldEnd: false },
+      2: { message: 'Legal! E qual o tamanho da equipe que precisa ser treinada?', currentStep: 3, shouldEnd: false },
+      3: { message: 'Vocês usam alguma plataforma de treinamentos hoje?', currentStep: 4, shouldEnd: false },
+      4: { message: 'E em quanto tempo gostariam de implementar uma solução?', currentStep: 5, shouldEnd: false },
+      5: { message: 'Perfeito! Para conectar com um especialista, qual seu nome completo?', currentStep: 6, shouldEnd: false },
+      6: { message: 'Ótimo! E qual o melhor contato — email ou WhatsApp?', currentStep: 6, shouldEnd: false },
+      7: { message: 'Anotado! E qual o nome da empresa?', currentStep: 6, shouldEnd: false },
     };
 
-    if (step <= 6) return responses[step] ?? responses[1];
+    if (step <= 7) return responses[step] ?? responses[1];
 
+    // Na finalização, monta dados_lead a partir das respostas do fluxo simulado
+    // Ordem das respostas: [0]=desafio, [1]=setor, [2]=equipe, [3]=plataforma, [4]=urgência, [5]=nome, [6]=contato, [7]=empresa
     return {
       message: 'Perfeito! 🎉 Em breve um especialista da Woli vai entrar em contato. Obrigado pela conversa!',
       currentStep: 7,
@@ -150,6 +157,17 @@ export class WoliAIService {
         status: 'FINALIZADO',
         resumo_conversa: 'Lead interessado em solução de treinamentos corporativos.',
         pitch: 'A Woli pode transformar seus treinamentos em experiências engajantes.',
+        dados_lead: {
+          desafio_principal: userResponses[0],
+          setor: userResponses[1],
+          tamanho_equipe: userResponses[2],
+          usa_plataforma: userResponses[3],
+          urgencia: userResponses[4],
+          nome: userResponses[5],
+          email: userResponses[6]?.includes('@') ? userResponses[6] : undefined,
+          whatsapp: userResponses[6] && !userResponses[6].includes('@') ? userResponses[6] : undefined,
+          empresa: userResponses[7],
+        },
       },
     };
   }
