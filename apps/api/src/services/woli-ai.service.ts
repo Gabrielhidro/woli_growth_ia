@@ -102,6 +102,7 @@ export class WoliAIService {
               status: 'FINALIZADO',
               resumo_conversa: parsed.resumo_conversa || '',
               pitch: parsed.pitch || '',
+              dados_lead: parsed.dados_lead,
             },
           };
         }

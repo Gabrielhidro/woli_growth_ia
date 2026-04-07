@@ -41,5 +41,16 @@ export interface WolerzitoResponse {
     status: 'FINALIZADO';
     resumo_conversa: string;
     pitch: string;
+    dados_lead?: {
+      nome?: string;
+      email?: string;
+      whatsapp?: string;
+      empresa?: string;
+      setor?: string;
+      tamanho_equipe?: string;
+      desafio_principal?: string;
+      usa_plataforma?: string;
+      urgencia?: string;
+    };
   };
 }

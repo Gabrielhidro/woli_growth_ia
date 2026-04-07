@@ -224,32 +224,75 @@ function extractDataFromMessage(sessionId: string, message: string): void {
   const session = sessionService.getSession(sessionId);
   if (!session) return;
 
-  const messageLower = message.toLowerCase();
+  const messageLower = message.toLowerCase().trim();
+  const messageClean = message.trim();
   const data: any = {};
 
   // Detectar email
-  const emailMatch = message.match(/[\w.-]+@[\w.-]+\.\w+/);
+  const emailMatch = messageClean.match(/[\w.-]+@[\w.-]+\.\w+/);
   if (emailMatch) {
     data.email = emailMatch[0];
   }
 
   // Detectar WhatsApp/telefone
-  const phoneMatch = message.match(/\(?\d{2}\)?\s?\d{4,5}-?\d{4}/);
+  const phoneMatch = messageClean.match(/\(?\d{2}\)?\s?\d{4,5}-?\d{4}/);
   if (phoneMatch) {
     data.whatsapp = phoneMatch[0];
   }
 
-  // Se não tem nome ainda e a mensagem parece ser um nome (2-4 palavras, sem números)
-  if (!session.collectedData.nome && /^[A-Za-zÀ-ÿ\s]{3,50}$/.test(message) && message.split(' ').length >= 2) {
-    data.nome = message;
+  // Extrair nome
+  if (!session.collectedData.nome) {
+    // Padrões: "Meu nome é X", "Me chamo X", "Sou o/a X", "É X", "Nome: X"
+    const nomePatterns = [
+      /(?:meu nome é|me chamo|eu sou o|eu sou a|sou o|sou a|pode me chamar de|nome[:\s]+)\s*([A-Za-zÀ-ÿ]{2,}\s+[A-Za-zÀ-ÿ\s]{2,})/i,
+      /(?:meu nome é|me chamo|eu sou o|eu sou a|sou o|sou a|pode me chamar de|nome[:\s]+)\s*([A-Za-zÀ-ÿ]{2,})/i,
+    ];
+
+    for (const pattern of nomePatterns) {
+      const match = messageClean.match(pattern);
+      if (match) {
+        data.nome = match[1].trim();
+        break;
+      }
+    }
+
+    // Fallback: mensagem inteira é um nome (2-4 palavras, só letras)
+    if (!data.nome && /^[A-Za-zÀ-ÿ\s]{3,50}$/.test(messageClean)) {
+      const words = messageClean.split(/\s+/).filter(w => w.length > 0);
+      if (words.length >= 2 && words.length <= 4) {
+        data.nome = messageClean;
+      }
+    }
   }
 
-  // Se for uma palavra só de mais de 3 letras e não tem empresa ainda, pode ser empresa
-  if (!session.collectedData.empresa && !session.collectedData.nome && /^[A-Za-z0-9À-ÿ\s]{3,}$/.test(message)) {
-    // Se contém palavras como "empresa", "consultoria", "tech", etc
-    if (messageLower.includes('empresa') || messageLower.includes('tech') || messageLower.includes('consultoria') ||
-        messageLower.includes('grupo') || messageLower.includes('ltda') || messageLower.includes('s.a')) {
-      data.empresa = message;
+  // Extrair empresa
+  if (!session.collectedData.empresa) {
+    // Padrões: "Trabalho na X", "empresa X", "da empresa X", "sou da X", "Empresa: X"
+    const empresaPatterns = [
+      /(?:trabalho na|trabalho no|empresa é|da empresa|sou da|sou do|empresa[:\s]+|é a empresa|na empresa)\s+([A-Za-z0-9À-ÿ\s&.-]{2,})/i,
+    ];
+
+    for (const pattern of empresaPatterns) {
+      const match = messageClean.match(pattern);
+      if (match) {
+        data.empresa = match[1].trim().replace(/[.,!?]+$/, '');
+        break;
+      }
+    }
+
+    // Fallback: mensagem curta que parece nome de empresa
+    if (!data.empresa && /^[A-Za-z0-9À-ÿ\s&.-]{2,60}$/.test(messageClean)) {
+      const words = messageClean.split(/\s+/).filter(w => w.length > 0);
+      if (words.length <= 5) {
+        // Se o step atual é 6 (coleta de contato) e já temos nome, provavelmente é empresa
+        if (session.currentStep >= 6 && session.collectedData.nome) {
+          data.empresa = messageClean;
+        }
+        // Ou se contém keywords de empresa
+        else if (/empresa|tech|consultoria|grupo|ltda|s\.a|soluções|digital|sistemas|educação|construtora|industria|indústria/i.test(messageLower)) {
+          data.empresa = messageClean;
+        }
+      }
     }
   }
 
@@ -269,6 +312,17 @@ async function finalizeChat(
     status: 'FINALIZADO';
     resumo_conversa: string;
     pitch: string;
+    dados_lead?: {
+      nome?: string;
+      email?: string;
+      whatsapp?: string;
+      empresa?: string;
+      setor?: string;
+      tamanho_equipe?: string;
+      desafio_principal?: string;
+      usa_plataforma?: string;
+      urgencia?: string;
+    };
   }
 ): Promise<void> {
   const session = sessionService.getSession(sessionId);
@@ -277,6 +331,19 @@ async function finalizeChat(
   const collected = session.collectedData;
   const historyJson = JSON.stringify(session.messages);
 
+  // Mescla dados coletados pelo pattern matching com dados extraídos pela IA (IA como fallback)
+  const aiLead = finalData?.dados_lead ?? {};
+  const mergedData = {
+    nome: collected.nome || aiLead.nome,
+    email: collected.email || aiLead.email,
+    whatsapp: collected.whatsapp || aiLead.whatsapp,
+    empresa: collected.empresa || aiLead.empresa,
+    setor: collected.setor || aiLead.setor,
+    tamanho_equipe: collected.tamanho_equipe || aiLead.tamanho_equipe,
+    desafio_principal: collected.desafio_principal || aiLead.desafio_principal,
+    usa_plataforma: collected.usa_plataforma || aiLead.usa_plataforma,
+  };
+
   // Se não há finalData, calcula agora
   let score = finalData?.score ?? 0;
   let classificacao = finalData?.classificacao ?? 'INCOMPLETO';
@@ -284,19 +351,19 @@ async function finalizeChat(
   let pitch = finalData?.pitch ?? '';
 
   if (!finalData) {
-    const scoringResult = calculateScore(collected);
+    const scoringResult = calculateScore(mergedData);
     score = scoringResult.score;
 
     const hasContact = Boolean(
-      collected.nome &&
-      collected.empresa &&
-      (collected.email || collected.whatsapp)
+      mergedData.nome &&
+      mergedData.empresa &&
+      (mergedData.email || mergedData.whatsapp)
     );
 
     const hasBusinessContext = Boolean(
-      collected.desafio_principal ||
-      collected.setor ||
-      collected.tamanho_equipe
+      mergedData.desafio_principal ||
+      mergedData.setor ||
+      mergedData.tamanho_equipe
     );
 
     classificacao = determineClassificacao(score, hasContact, hasBusinessContext);
@@ -306,14 +373,14 @@ async function finalizeChat(
   await prisma.lead.update({
     where: { id: session.leadId },
     data: {
-      nome: collected.nome,
-      email: collected.email,
-      whatsapp: collected.whatsapp,
-      empresa: collected.empresa,
-      setor: collected.setor,
-      tamanho_equipe: collected.tamanho_equipe,
-      desafio_principal: collected.desafio_principal,
-      usa_plataforma: collected.usa_plataforma,
+      nome: mergedData.nome,
+      email: mergedData.email,
+      whatsapp: mergedData.whatsapp,
+      empresa: mergedData.empresa,
+      setor: mergedData.setor,
+      tamanho_equipe: mergedData.tamanho_equipe,
+      desafio_principal: mergedData.desafio_principal,
+      usa_plataforma: mergedData.usa_plataforma,
       score,
       classificacao,
       status: 'FINALIZADO',
