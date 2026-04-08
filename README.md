@@ -116,12 +116,14 @@ Copie o `.env.example` para `.env` na raiz e configure:
 
 ```env
 PORT=3333
-DATABASE_URL=https://woli-growth-ia.onrender.com
+DATABASE_URL=postgresql://postgres...
 JWT_SECRET=sua_secret_jwt
 WOLI_AI_API_URL=https://api-ia.woli.com.br
 WOLI_AI_TOKEN=seu_token        # Opcional — sem token, usa modo simulado
-FRONTEND_URL=http://localhost:5173
+FRONTEND_URL=https://woli-growth-ia-web-f6hj.vercel.app/
 NODE_ENV=development
+VITE_API_URL=https://woli-growth-ia.onrender.com/
+
 ```
 
 ### 3. Configurar o banco de dados
@@ -143,9 +145,9 @@ npm run dev
 
 Acesse:
 
-- **Frontend**: http://localhost:5173
-- **Backend**: http://localhost:3333
-- **Health Check**: http://localhost:3333/health
+- **Frontend**: https://woli-growth-ia-web-f6hj.vercel.app/
+- **Backend**: https://woli-growth-ia.onrender.com/
+- **Health Check**: https://woli-growth-ia.onrender.com//health
 
 #### Rodar separadamente
 
