@@ -125,48 +125,100 @@ export class WoliAIService {
     return 1;
   }
 
-  /** Respostas simuladas — usadas quando WOLI_AI_TOKEN não está configurado */
+  /**
+   * Respostas simuladas — usadas quando WOLI_AI_TOKEN não está configurado.
+   *
+   * Fluxo de conversa (a mensagem inicial do /api/chat/start pergunta sobre desafio):
+   *   Msg 1 do user → resposta ao desafio     → bot pergunta setor
+   *   Msg 2 do user → resposta ao setor       → bot pergunta tamanho equipe
+   *   Msg 3 do user → resposta ao tamanho     → bot pergunta plataforma
+   *   Msg 4 do user → resposta à plataforma   → bot pergunta urgência
+   *   Msg 5 do user → resposta à urgência     → bot pede nome
+   *   Msg 6 do user → resposta com nome       → bot pede email ou whatsapp
+   *   Msg 7 do user → resposta com contato    → bot pede empresa
+   *   Msg 8 do user → resposta com empresa    → bot finaliza
+   *
+   * IMPORTANTE: userMessages.length já inclui a mensagem atual (adicionada antes
+   * de chamar sendMessage), então msg 1 = length 1.
+   */
   private simulateResponse(chatHistory: ChatMessage[]): WolerzitoResponse {
     const userMessages = chatHistory.filter(m => m.role === 'user');
-    const step = userMessages.length + 1;
+    const msgCount = userMessages.length; // 1-based: primeira msg do user = 1
 
-    // Coleta respostas do usuário para montar dados_lead na finalização
-    const userResponses = userMessages.map(m => m.content);
-
-    const responses: Record<number, WolerzitoResponse> = {
-      1: { message: 'Entendo! Qual o setor de atuação da sua empresa?', currentStep: 2, shouldEnd: false },
-      2: { message: 'Legal! E qual o tamanho da equipe que precisa ser treinada?', currentStep: 3, shouldEnd: false },
-      3: { message: 'Vocês usam alguma plataforma de treinamentos hoje?', currentStep: 4, shouldEnd: false },
-      4: { message: 'E em quanto tempo gostariam de implementar uma solução?', currentStep: 5, shouldEnd: false },
-      5: { message: 'Perfeito! Para conectar com um especialista, qual seu nome completo?', currentStep: 6, shouldEnd: false },
-      6: { message: 'Ótimo! E qual o melhor contato — email ou WhatsApp?', currentStep: 6, shouldEnd: false },
-      7: { message: 'Anotado! E qual o nome da empresa?', currentStep: 6, shouldEnd: false },
+    // Respostas do bot após cada mensagem do usuário
+    const flow: Record<number, { message: string; currentStep: number }> = {
+      1: {
+        message: 'Entendo perfeitamente — esse é um dos desafios mais comuns que vemos nas empresas! Qual o setor de atuação da sua empresa?',
+        currentStep: 2,
+      },
+      2: {
+        message: 'Interessante! E qual o tamanho da equipe que precisa ser treinada? Pode ser um número aproximado mesmo.',
+        currentStep: 3,
+      },
+      3: {
+        message: 'Faz sentido. Vocês usam alguma plataforma ou ferramenta para treinamentos hoje, ou é mais por conta própria?',
+        currentStep: 4,
+      },
+      4: {
+        message: 'Entendi o cenário! E em quanto tempo vocês gostariam de ter uma solução rodando?',
+        currentStep: 5,
+      },
+      5: {
+        message: 'Ótimo! Para que um especialista da Woli possa entrar em contato já com contexto da sua situação, qual seu nome completo?',
+        currentStep: 6,
+      },
+      6: {
+        message: 'Prazer, {nome}! Qual seu melhor email ou WhatsApp para contato?',
+        currentStep: 6,
+      },
+      7: {
+        message: 'Anotado! E qual o nome da empresa?',
+        currentStep: 6,
+      },
     };
 
-    if (step <= 7) return responses[step] ?? responses[1];
+    if (msgCount <= 7) {
+      const step = flow[msgCount] ?? flow[1];
+      let message = step.message;
 
-    // Na finalização, monta dados_lead a partir das respostas do fluxo simulado
-    // Ordem das respostas: [0]=desafio, [1]=setor, [2]=equipe, [3]=plataforma, [4]=urgência, [5]=nome, [6]=contato, [7]=empresa
+      // Personaliza a resposta do step 6 com o nome do usuário
+      if (msgCount === 6) {
+        const nome = userMessages[5]?.content?.split(' ')[0] ?? '';
+        message = message.replace('{nome}', nome);
+      }
+
+      return { message, currentStep: step.currentStep, shouldEnd: false };
+    }
+
+    // Finalização — monta dados_lead com mapeamento direto por posição
+    // [0]=desafio, [1]=setor, [2]=equipe, [3]=plataforma, [4]=urgência, [5]=nome, [6]=contato, [7]=empresa
+    const r = (i: number) => userMessages[i]?.content;
+    const contato = r(6) ?? '';
+    const isEmail = contato.includes('@');
+
+    const nome = r(5) ?? '';
+    const empresa = r(7) ?? '';
+
     return {
-      message: 'Perfeito! 🎉 Em breve um especialista da Woli vai entrar em contato. Obrigado pela conversa!',
+      message: `Perfeito, ${nome.split(' ')[0]}! 🚀 Com o que você me contou, tenho certeza que nosso especialista vai conseguir te mostrar algo muito relevante para a ${empresa}. Ele já vai chegar sabendo do seu contexto. Em breve entraremos em contato!`,
       currentStep: 7,
       shouldEnd: true,
       finalData: {
         score: 70,
         classificacao: 'QUALIFICADO',
         status: 'FINALIZADO',
-        resumo_conversa: 'Lead interessado em solução de treinamentos corporativos.',
-        pitch: 'A Woli pode transformar seus treinamentos em experiências engajantes.',
+        resumo_conversa: `${nome}, da ${empresa} (setor: ${r(1)}, equipe: ${r(2)}). Desafio: ${r(0)}. Usa: ${r(3)}. Urgência: ${r(4)}.`,
+        pitch: `A Woli pode ajudar a ${empresa} a resolver o desafio de ${r(0)?.toLowerCase()}. Com nossa plataforma gamificada, trilhas personalizadas e IA, seus colaboradores vão ter uma experiência de aprendizado que realmente engaja.\n\nAlém disso, nossos dashboards mostram em tempo real quem está engajado e quem precisa de reforço — visibilidade total para sua gestão.`,
         dados_lead: {
-          desafio_principal: userResponses[0],
-          setor: userResponses[1],
-          tamanho_equipe: userResponses[2],
-          usa_plataforma: userResponses[3],
-          urgencia: userResponses[4],
-          nome: userResponses[5],
-          email: userResponses[6]?.includes('@') ? userResponses[6] : undefined,
-          whatsapp: userResponses[6] && !userResponses[6].includes('@') ? userResponses[6] : undefined,
-          empresa: userResponses[7],
+          nome: r(5),
+          email: isEmail ? contato : undefined,
+          whatsapp: !isEmail ? contato : undefined,
+          empresa: r(7),
+          setor: r(1),
+          tamanho_equipe: r(2),
+          desafio_principal: r(0),
+          usa_plataforma: r(3),
+          urgencia: r(4),
         },
       },
     };
