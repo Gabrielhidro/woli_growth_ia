@@ -8,11 +8,16 @@ import { leadsRoutes } from './routes/leads.routes';
 
 const app = express();
 
-app.use(cors({
+const corsOptions = {
   origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-}));
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+// Preflight deve ser respondido ANTES de qualquer middleware de auth
+app.options('*', cors(corsOptions));
+app.use(cors(corsOptions));
 app.use(express.json());
 
 app.use(healthRoutes);
