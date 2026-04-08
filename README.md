@@ -37,6 +37,8 @@ O **Woli Growth AI** resolve o problema de captacao de leads de forma automatiza
 
 Para acessar o painel comercial:
 
+Aesse: https://woli-growth-ia-web-f6hj.vercel.app/dashboard
+
 | Campo      | Valor               |
 | ---------- | ------------------- |
 | **E-mail** | `admin@woli.com.br` |
@@ -192,7 +194,10 @@ npm run build
 
 ## Deploy
 
-O projeto possui configuracoes prontas para:
+O projeto esta deployado e disponivel nos seguintes ambientes:
 
-- **Backend**: [Render](https://render.com) (`render.yaml`) ou [Railway](https://railway.app) (`railway.toml`)
-- **Frontend**: [Vercel](https://vercel.com) (`vercel.json`)
+| Servico            | Plataforma | URL                                         |
+| ------------------ | ---------- | ------------------------------------------- |
+| **Frontend**       | Vercel     | https://woli-growth-ia-web-f6hj.vercel.app/ |
+| **Backend**        | Render     | https://woli-growth-ia.onrender.com/        |
+| **Banco de dados** | Supabase   | PostgreSQL gerenciado                       |
